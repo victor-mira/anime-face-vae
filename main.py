@@ -9,21 +9,26 @@ from imageLoader import ImageLoader
 il = ImageLoader('size64/')
 ds = il.load()
 
-encoding_dim = 64
-latent_dim = 8
+encoding_dim = 128
+latent_dim = 64
 img_shape = (imageLoader.IMG_HEIGHT, imageLoader.IMG_WIDTH, 3)
 
 # Encoder
 inputs = keras.Input(shape=img_shape)
 normalization_layer = layers.Rescaling(1. / 255, input_shape=img_shape)(inputs)
-x = layers.Conv2D(32, (3, 3), activation="relu", padding="same")(normalization_layer)
-x = layers.MaxPool2D((2, 2))(x)
-x = layers.Conv2D(16, (3, 3), activation="relu", padding="same")(x)
+x = layers.Conv2D(64, (5, 5), activation="relu", padding="same")(normalization_layer)
+# x = layers.MaxPool2D((2, 2))(x)
+x = layers.BatchNormalization()(x)
+x = layers.Conv2D(128, (5, 5), activation="relu", padding="same")(x)
+x = layers.BatchNormalization()(x)
+x = layers.Conv2D(256, (5, 5), activation="relu", padding="same")(x)
+x = layers.BatchNormalization()(x)
 x = layers.Flatten()(x)
 # "encoded" is the encoded representation of the input
 h = layers.Dense(encoding_dim, activation='relu')(x)
-z_mean = layers.Dense(latent_dim)(h)
-z_log_sigma = layers.Dense(latent_dim)(h)
+z_mean = layers.Dense(latent_dim, activation='sigmoid')(h)
+z_log_sigma = layers.Dense(latent_dim, activation='sigmoid')(h)
+
 
 def sampling(args):
     z_mean, z_log_sigma = args
@@ -31,19 +36,34 @@ def sampling(args):
                               mean=0., stddev=0.1)
     return z_mean + K.exp(z_log_sigma) * epsilon
 
+
 z = layers.Lambda(sampling)([z_mean, z_log_sigma])
 
 encoder = keras.Model(inputs, [z_mean, z_log_sigma, z], name='encoder')
 encoder.summary()
 
+image_size = 64
+s2, s4, s8, s16 = int(image_size / 2), int(image_size / 4), int(image_size / 8), int(image_size / 16)  # 32,16,8,4
+gf_dim = 64
+c_dim = 3
+
 # Decoder
 latent_inputs = keras.Input(shape=(latent_dim,), name='z_sampling')
 y = layers.Dense(encoding_dim, activation='relu')(latent_inputs)
-y = layers.Dense(768, activation='relu')(y)
-y = layers.Reshape((16, 16, 3))(y)
-y = layers.UpSampling2D((4, 4))(y)
-y = layers.Conv2D(32, (3, 3), activation="relu", padding="same")(y)
-outputs = layers.Conv2D(3, (5, 5), activation="sigmoid", padding="same")(y)
+y = layers.Dense(gf_dim * 4 * s8 * s8, activation='relu')(y)
+y = layers.Reshape((s8, s8, gf_dim * 4))(y)
+y = layers.BatchNormalization()(y)
+y = layers.Conv2DTranspose(gf_dim * 4, (5, 5)  , strides=(2, 2),
+                           padding='SAME')(y)
+y = layers.BatchNormalization()(y)
+y = layers.Conv2DTranspose(gf_dim * 2, (5, 5), strides=(2, 2),
+                           padding='SAME')(y)
+y = layers.BatchNormalization()(y)
+y = layers.Conv2DTranspose(gf_dim, (5, 5), strides=(2, 2),
+                           padding='SAME')(y)
+y = layers.BatchNormalization()(y)
+# y = layers.Conv2D(32, (3, 3), activation="relu", padding="same")(y)
+outputs = layers.Conv2DTranspose(3, (5, 5), activation="sigmoid", padding="same")(y)
 
 decoder = keras.Model(latent_inputs, outputs, name='decoder')
 decoder.summary()
@@ -66,14 +86,13 @@ x_test = np.array([x.numpy() for x in ds.skip(train_size).take(test_size)])
 
 vae.fit(x=x_train, y=x_train,
         batch_size=32,
-        epochs=30,
+        epochs=100,
         shuffle=True,
         validation_data=(x_test, x_test))
 
-vae.save('Models/VAE')
-encoder.save('Models/Encoder')
-decoder.save('Models/Decoder')
-
+vae.save('Models4/VAE')
+encoder.save('Models4/Encoder')
+decoder.save('Models4/Decoder')
 
 # Test
 
