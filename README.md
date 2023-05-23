@@ -29,10 +29,11 @@ The data used were the 64x64 files for performances reasons
 
 ## Results
 ### Auto-Encoding results :
-![test_results](https://github.com/victor-mira/anime-face-vae/assets/58742508/db3b092b-0520-4db2-9e98-da65f071c4f6)
+![myplot](https://github.com/victor-mira/anime-face-vae/assets/58742508/972fe314-fe4f-400f-94e5-2e03ff54397d)
 
 ### Results with random latent vector :
-![image](https://github.com/victor-mira/anime-face-vae/assets/58742508/6bfba8f7-cb83-4d45-a770-2c0f12b87288)
+![myplot2](https://github.com/victor-mira/anime-face-vae/assets/58742508/4b854b36-27b6-4f0a-8b11-43f8738243ec)
+
 
 
 
